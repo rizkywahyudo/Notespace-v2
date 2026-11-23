@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteSpace — Cloud Realtime Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-700">
+
+    <!-- ==================== AUTH SCREEN ==================== -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-sm">
+                    N
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900">NoteSpace</h1>
+                    <p class="text-xs text-slate-500">Realtime Cloud Workspace</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-6">
+                <button id="tab-login" type="button" class="py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition">
+                    Masuk
+                </button>
+                <button id="tab-register" type="button" class="py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    Daftar Baru
+                </button>
+            </div>
+
+            <!-- Alert Error/Success -->
+            <div id="auth-alert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium"></div>
+
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Email</label>
+                    <input type="email" id="auth-email" required placeholder="nama@email.com"
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+                    <input type="password" id="auth-password" required minlength="6" placeholder="Minimal 6 karakter"
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                </div>
+                <button type="submit" id="auth-submit-btn"
+                    class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                    <span>Masuk ke NoteSpace</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN APP SCREEN ==================== -->
+    <div id="app-screen" class="hidden min-h-screen flex flex-col">
+        <!-- Top Navbar -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-base">
+                        N
+                    </div>
+                    <span class="font-bold text-slate-900 text-lg tracking-tight">NoteSpace</span>
+                    <span id="sync-badge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Realtime Sync
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span id="user-email-display" class="text-xs text-slate-500 hidden md:inline truncate max-w-[200px]"></span>
+                    <button id="btn-new-note"
+                        class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium rounded-xl shadow-sm transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span>Catatan Baru</span>
+                    </button>
+                    <button id="btn-logout" title="Keluar"
+                        class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Search & Filter Bar -->
+        <div class="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-6 pb-2">
+            <div class="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                <div class="relative w-full sm:w-80">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="search-input" placeholder="Cari judul atau isi catatan..."
+                        class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="text-xs text-slate-500 w-full sm:w-auto text-right">
+                    Total: <strong id="notes-count" class="text-slate-800">0</strong> catatan
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Grid -->
+        <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-4 flex-1">
+            <!-- Empty State (Fresh Storage) -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center text-center py-20 px-4 bg-white rounded-2xl border border-dashed border-slate-300 mt-4">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </div>
+                <h3 class="text-base font-semibold text-slate-900 mb-1">Ruang Penyimpanan Masih Kosong</h3>
+                <p class="text-sm text-slate-500 max-w-sm mb-5">Belum ada catatan tersimpan di akun ini. Mulai buat catatan pertamamu dan nikmati sinkronisasi otomatis di semua perangkat.</p>
+                <button onclick="openEditor()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition">
+                    + Buat Catatan Pertama
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="flex justify-center items-center py-20">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+
+            <!-- Grid Container -->
+            <div id="notes-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </main>
+    </div>
+
+    <!-- ==================== MODAL EDITOR ==================== -->
+    <div id="editor-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span id="editor-modal-title" class="text-sm font-semibold text-slate-700">Catatan Baru</span>
+                    <span id="save-status" class="text-xs text-slate-400"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-pin-toggle" type="button" title="Sematkan Catatan"
+                        class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>
+                    </button>
+                    <button id="btn-close-modal" type="button" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto space-y-4">
+                <input type="hidden" id="note-id">
+                <input type="text" id="note-title" placeholder="Judul catatan..."
+                    class="w-full text-xl font-bold text-slate-900 placeholder-slate-300 focus:outline-none">
+                
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400">Label:</span>
+                    <input type="text" id="note-tag" placeholder="Misal: Kerja, Ide, Keuangan"
+                        class="text-xs px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48">
+                </div>
+
+                <textarea id="note-content" rows="10" placeholder="Tulis isi catatan di sini..."
+                    class="w-full text-sm text-slate-700 leading-relaxed placeholder-slate-300 focus:outline-none resize-none"></textarea>
+            </div>
+
+            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <button id="btn-delete-note" type="button" class="hidden text-xs font-medium text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition">
+                    Hapus Catatan
+                </button>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="btn-cancel-modal" type="button" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200/70 rounded-xl transition">
+                        Batal
+                    </button>
+                    <button id="btn-save-note" type="button" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-sm transition">
+                        Simpan Catatan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FIREBASE & APP LOGIC ==================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            updateDoc, 
+            deleteDoc, 
+            doc, 
+            query, 
+            where, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // =========================================================================
+        // GANTI KONFIGURASI DI BAWAH INI DENGAN MILIK PROJECT FIREBASE KAMU
+        // =========================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDapfMfKAjf88ME_a69FnxtnOpgej3Ip0",
+            authDomain: "notespace-4fd33.firebaseapp.com",
+            projectId: "notespace-4fd33",
+            storageBucket: "notespace-4fd33.firebasestorage.app",
+            messagingSenderId: "557436403622 com",
+            appId: "1:557436403622:web:15e83f734bd617cea21967"
+        };
+        // =========================================================================
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // App State
+        let currentUser = null;
+        let unsubscribeNotes = null;
+        let allNotes = [];
+        let isRegisterMode = false;
+        let currentPinnedState = false;
+
+        // DOM Elements - Auth
+        const authScreen = document.getElementById('auth-screen');
+        const appScreen = document.getElementById('app-screen');
+        const tabLogin = document.getElementById('tab-login');
+        const tabRegister = document.getElementById('tab-register');
+        const authForm = document.getElementById('auth-form');
+        const authEmail = document.getElementById('auth-email');
+        const authPassword = document.getElementById('auth-password');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authAlert = document.getElementById('auth-alert');
+
+        // DOM Elements - App
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const btnLogout = document.getElementById('btn-logout');
+        const btnNewNote = document.getElementById('btn-new-note');
+        const searchInput = document.getElementById('search-input');
+        const notesCount = document.getElementById('notes-count');
+        const notesGrid = document.getElementById('notes-grid');
+        const emptyState = document.getElementById('empty-state');
+        const loadingState = document.getElementById('loading-state');
+
+        // DOM Elements - Modal
+        const editorModal = document.getElementById('editor-modal');
+        const editorModalTitle = document.getElementById('editor-modal-title');
+        const noteIdInput = document.getElementById('note-id');
+        const noteTitleInput = document.getElementById('note-title');
+        const noteTagInput = document.getElementById('note-tag');
+        const noteContentInput = document.getElementById('note-content');
+        const btnPinToggle = document.getElementById('btn-pin-toggle');
+        const btnDeleteNote = document.getElementById('btn-delete-note');
+        const btnSaveNote = document.getElementById('btn-save-note');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCancelModal = document.getElementById('btn-cancel-modal');
+
+        // Switch Auth Tabs
+        tabLogin.addEventListener('click', () => {
+            isRegisterMode = false;
+            tabLogin.className = "py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition";
+            tabRegister.className = "py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+            authSubmitBtn.innerHTML = `<span>Masuk ke NoteSpace</span>`;
+            hideAlert();
+        });
+
+        tabRegister.addEventListener('click', () => {
+            isRegisterMode = true;
+            tabRegister.className = "py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition";
+            tabLogin.className = "py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+            authSubmitBtn.innerHTML = `<span>Buat Akun Baru</span>`;
+            hideAlert();
+        });
+
+        function showAlert(msg, isError = true) {
+            authAlert.textContent = msg;
+            authAlert.className = `mb-4 p-3 rounded-xl text-xs font-medium ${isError ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`;
+            authAlert.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            authAlert.classList.add('hidden');
+        }
+
+        // Handle Login / Register Submit
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAlert();
+            const email = authEmail.value.trim();
+            const password = authPassword.value;
+
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = "Memproses...";
+
+            try {
+                if (isRegisterMode) {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                let message = "Terjadi kesalahan autentikasi.";
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    message = "Email atau password salah.";
+                } else if (error.code === 'auth/email-already-in-use') {
+                    message = "Email sudah terdaftar. Silakan masuk.";
+                } else if (error.code === 'auth/weak-password') {
+                    message = "Password terlalu lemah (minimal 6 karakter).";
+                } else if (error.code === 'auth/invalid-api-key') {
+                    message = "Konfigurasi Firebase API Key belum diisi dengan benar!";
+                }
+                showAlert(message, true);
+            } finally {
+                authSubmitBtn.disabled = false;
+                authSubmitBtn.innerHTML = `<span>${isRegisterMode ? 'Buat Akun Baru' : 'Masuk ke NoteSpace'}</span>`;
+            }
+        });
+
+        // Auth State Listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                userEmailDisplay.textContent = user.email;
+                authScreen.classList.add('hidden');
+                appScreen.classList.remove('hidden');
+                startRealtimeSync(user.uid);
+            } else {
+                currentUser = null;
+                if (unsubscribeNotes) {
+                    unsubscribeNotes();
+                    unsubscribeNotes = null;
+                }
+                allNotes = [];
+                notesGrid.innerHTML = '';
+                appScreen.classList.add('hidden');
+                authScreen.classList.remove('hidden');
+            }
+        });
+
+        // Logout
+        btnLogout.addEventListener('click', () => signOut(auth));
+
+        // Realtime Firestore Listener (Fresh Storage: No dummy data seeded)
+        function startRealtimeSync(uid) {
+   loadingState.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            notesGrid.innerHTML = '';
+
+            // Query hanya catatan milik user yang sedang login
+            const q = query(
+                collection(db, "notes"),
+                where("uid", "==", uid)
+            );
+
+            unsubscribeNotes = onSnapshot(q, (snapshot) => {
+                loadingState.classList.add('hidden');
+                allNotes = [];
+                snapshot.forEach((docSnap) => {
+                    allNotes.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Urutkan client-side: Pinned dulu, lalu terbaru berdasarkan updatedAt
+                allNotes.sort((a, b) => {
+                    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+                    const timeA = a.updatedAt?.toMillis() || Date.now();
+                    const timeB = b.updatedAt?.toMillis() || Date.now();
+                    return timeB - timeA;
+                });
+
+                renderNotes();
+            }, (error) => {
+                loadingState.classList.add('hidden');
+                console.error("Firestore Sync Error:", error);
+                alert("Gagal sinkronisasi dengan Firestore. Pastikan Security Rules sudah diatur.");
+            });
+        }
+
+        // Render Notes Cards
+        function renderNotes() {
+            const keyword = searchInput.value.toLowerCase().trim();
+            const filtered = allNotes.filter(n => 
+                (n.title && n.title.toLowerCase().includes(keyword)) || 
+                (n.content && n.content.toLowerCase().includes(keyword)) ||
+                (n.tag && n.tag.toLowerCase().includes(keyword))
+            );
+
+            notesCount.textContent = filtered.length;
+            notesGrid.innerHTML = '';
+
+            if (allNotes.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            if (filtered.length === 0) {
+                notesGrid.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-slate-400">Tidak ada catatan yang cocok dengan pencarian "${keyword}".</div>`;
+                return;
+            }
+
+            filtered.forEach(note => {
+                const dateStr = note.updatedAt 
+                    ? new Date(note.updatedAt.toMillis()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : 'Baru saja';
+
+                const card = document.createElement('div');
+                card.className = `group bg-white rounded-2xl p-5 border ${note.pinned ? 'border-indigo-300 ring-1 ring-indigo-100' : 'border-slate-200'} hover:border-indigo-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between h-56`;
+                card.onclick = () => openEditor(note);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <h3 class="font-semibold text-slate-900 text-base line-clamp-1">${escapeHTML(note.title || 'Tanpa Judul')}</h3>
+                            ${note.pinned ? `<span class="text-indigo-600 shrink-0" title="Disematkan"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg></span>` : ''}
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed line-clamp-5 whitespace-pre-line">${escapeHTML(note.content || '')}</p>
+                    </div>
+                    <div class="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                        ${note.tag ? `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-medium">${escapeHTML(note.tag)}</span>` : `<span></span>`}
+                        <span class="text-[11px] text-slate-400">${dateStr}</span>
+                    </div>
+                `;
+                notesGrid.appendChild(card);
+            });
+        }
+
+        searchInput.addEventListener('input', renderNotes);
+
+        // Modal Editor Controls
+        window.openEditor = function(note = null) {
+            if (note) {
+                editorModalTitle.textContent = "Edit Catatan";
+                noteIdInput.value = note.id;
+                noteTitleInput.value = note.title || '';
+                noteTagInput.value = note.tag || '';
+                noteContentInput.value = note.content || '';
+                currentPinnedState = !!note.pinned;
+                btnDeleteNote.classList.remove('hidden');
+            } else {
+                editorModalTitle.textContent = "Catatan Baru";
+                noteIdInput.value = '';
+                noteTitleInput.value = '';
+                noteTagInput.value = '';
+                noteContentInput.value = '';
+                currentPinnedState = false;
+                btnDeleteNote.classList.add('hidden');
+            }
+            updatePinButtonUI();
+            editorModal.classList.remove('hidden');
+            noteTitleInput.focus();
+        };
+
+        function closeEditor() {
+            editorModal.classList.add('hidden');
+        }
+
+        function updatePinButtonUI() {
+            if (currentPinnedState) {
+                btnPinToggle.className = "p-2 rounded-lg text-amber-500 bg-amber-50 transition";
+            } else {
+                btnPinToggle.className = "p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition";
+            }
+        }
+
+        btnPinToggle.addEventListener('click', () => {
+            currentPinnedState = !currentPinnedState;
+            updatePinButtonUI();
+        });
+
+        btnNewNote.addEventListener('click', () => openEditor());
+        btnCloseModal.addEventListener('click', closeEditor);
+        btnCancelModal.addEventListener('click', closeEditor);
+
+        // Save Note (Create or Update)
+        btnSaveNote.addEventListener('click', async () => {
+            if (!currentUser) return;
+            const id = noteIdInput.value;
+            const title = noteTitleInput.value.trim();
+            const tag = noteTagInput.value.trim();
+            const content = noteContentInput.value.trim();
+
+            if (!title && !content) {
+                alert("Judul atau isi catatan tidak boleh kosong.");
+                return;
+            }
+
+            btnSaveNote.disabled = true;
+            btnSaveNote.textContent = "Menyimpan...";
+
+            try {
+                if (id) {
+                    await updateDoc(doc(db, "notes", id), {
+                        title,
+                        tag,
+                        content,
+                        pinned: currentPinnedState,
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    await addDoc(collection(db, "notes"), {
+                        uid: currentUser.uid,
+                        title,
+                        tag,
+                        content,
+                        pinned: currentPinnedState,
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                }
+                closeEditor();
+            } catch (err) {
+                console.error("Save error:", err);
+                alert("Gagal menyimpan catatan: " + err.message);
+            } finally {
+                btnSaveNote.disabled = false;
+                btnSaveNote.textContent = "Simpan Catatan";
+            }
+        });
+
+        // Delete Note
+        btnDeleteNote.addEventListener('click', async () => {
+            const id = noteIdInput.value;
+            if (!id) return;
+            if (!confirm("Yakin ingin menghapus catatan ini secara permanen?")) return;
+
+            try {
+                await deleteDoc(doc(db, "notes", id));
+                closeEditor();
+            } catch (err) {
+                console.error("Delete error:", err);
+                alert("Gagal menghapus catatan.");
+            }
+        });
+
+        // Helper XSS Prevention
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag]));
+        }
+    </script>
+</body>
+</html>
